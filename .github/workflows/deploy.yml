@@ -1,49 +1,30 @@
-name: Deploy Expense Tracker to GitHub Pages
+name: Deploy Expense Tracker
 
 on:
   push:
     branches:
-      - main  # Adjust to master if your primary branch uses the old naming convention
+      - main  # Triggers the deployment whenever you push to your main branch
 
-# Set permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  contents: write
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Pull down the source code
+      # 1. Pull down the source code from the repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Swap placeholders with your GitHub Secrets
+      # 2. Safely swap the placeholders in script.js with your GitHub Secrets
       - name: Inject Secure Keys
         run: |
           sed -i "s|G_CLIENT_ID_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_ID }}|g" script.js
           sed -i "s|G_API_KEY_PLACEHOLDER|${{ secrets.GOOGLE_API_KEY }}|g" script.js
 
-      # 3. Configure the GitHub Pages environment
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      # 4. Package the current directory as a static site artifact
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      # 5. Deploy the artifact straight to the Pages infrastructure
+      # 3. Deploy the modified static files directly to GitHub Pages
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .        # Deploys the root folder files
+          branch: gh-pages # Pushes the built site to a clean gh-pages deployment branch
