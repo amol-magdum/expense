@@ -1,6 +1,7 @@
 // --- CONFIGURATION MANAGEMENT ---
-const CLIENT_ID = '44826419479-gk0j5gnb75muvo8i3e5981fujh94mbte.apps.googleusercontent.com'; 
-const API_KEY = 'AIzaSyCjR3KuwmT4Hu-5fk11SWD5b48TwIyQwek';
+// These placeholders will be automatically overwritten by GitHub Actions during deployment
+const CLIENT_ID = 'G_CLIENT_ID_PLACEHOLDER'; 
+const API_KEY = 'G_API_KEY_PLACEHOLDER';
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const FILE_NAME = 'app_expenses.json';
