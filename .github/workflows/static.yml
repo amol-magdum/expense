@@ -1,0 +1,30 @@
+name: Deploy Expense Tracker to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # Triggers the deployment whenever you push to your main branch
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Pull down the source code from the repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Safely swap the placeholders in script.js with your GitHub Secrets
+      - name: Inject Secure Keys
+        run: |
+          sed -i "s|G_CLIENT_ID_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_ID }}|g" script.js
+          sed -i "s|G_API_KEY_PLACEHOLDER|${{ secrets.GOOGLE_API_KEY }}|g" script.js
+
+      # 3. Deploy the modified static files directly to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .        # Deploys the root folder files
+          branch: gh-pages # Pushes the built site to a clean gh-pages deployment branch
