@@ -297,7 +297,7 @@ function renderHistoryTableScreen() {
                 <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100">${exp.category}</span></td>
                 <td class="p-3 font-medium text-gray-800">${exp.description}</td>
                 <td class="p-3 text-xs text-gray-400 max-w-[90px] truncate font-mono" title="${exp.createdBy}">${exp.createdBy ? exp.createdBy.split('@')[0] : 'System'}</td>
-                <td class="p-3 text-right font-bold text-gray-900">$${parseFloat(exp.amount || 0).toFixed(2)}</td>
+                <td class="p-3 text-right font-bold text-gray-900">₹${parseFloat(exp.amount || 0).toFixed(2)}</td>
                 <td class="p-3 text-center">
                     <button onclick="deleteExpenseEntryHook('${exp.id}')" class="text-gray-300 hover:text-red-600 hover:bg-red-50 transition duration-150 inline-flex items-center justify-center p-1.5 rounded-lg border border-transparent hover:border-red-100" title="Delete Expense Entry Line">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,7 +313,7 @@ function renderHistoryTableScreen() {
     const [year, month] = selectedMonth.split('-');
     const contextualVerboseDateString = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     totalCardLabel.innerText = `Total Expenses (${contextualVerboseDateString})`;
-    monthlyTotal.innerText = `$${calculateSelectedMonthAggregate().toFixed(2)}`;
+    monthlyTotal.innerText = `₹${calculateSelectedMonthAggregate().toFixed(2)}`;
 }
 
 // Render Screen View State 3: Monthly Aggregate Reports Graph List 
@@ -348,7 +348,7 @@ function renderMonthlyBreakdownScreen() {
         row.innerHTML = `
             <td class="p-4 font-bold text-gray-900">${dynamicLabelVerbose}</td>
             <td class="p-4 text-gray-500 font-medium text-xs">${analysisMatrix[m].count} processed logs</td>
-            <td class="p-4 text-right font-extrabold text-blue-600 tracking-tight">$${analysisMatrix[m].amount.toFixed(2)}</td>
+            <td class="p-4 text-right font-extrabold text-blue-600 tracking-tight">₹${analysisMatrix[m].amount.toFixed(2)}</td>
         `;
         summaryTableBody.appendChild(row);
     });
