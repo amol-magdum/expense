@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive Expense Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen font-sans antialiased text-gray-900">
+
+    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen px-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-2xl mb-4">
+                <span class="text-3xl">💸</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Expense Tracker</h1>
+            <p class="text-gray-500 mb-8 text-sm">A secure, serverless application that backs up your personal transactions directly to your own Google Drive storage account.</p>
+            
+            <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 flex items-center justify-center gap-3 border border-transparent">
+                <svg class="w-5 h-5 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Sign in with Google Account
+            </button>
+        </div>
+    </div>
+
+    <div id="app-screen" class="hidden opacity-0 transition-opacity duration-300 max-w-5xl mx-auto p-4 md:p-8">
+        
+        <header class="relative flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm mb-6 border border-gray-100">
+            <div class="flex items-center gap-3">
+                <button id="menu-btn" class="p-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition text-gray-600" aria-label="Open User Options">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-xl font-bold tracking-tight text-gray-900">Dashboard Workspace</h1>
+            </div>
+
+            <div id="menu-panel" class="hidden absolute top-full left-5 mt-2 w-72 bg-white rounded-xl shadow-lg p-4 z-30 border border-gray-100">
+                <p id="user-email" class="text-xs text-gray-500 font-mono truncate mb-3">Loading user configuration...</p>
+                <button id="logout-btn" class="w-full bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-700 px-4 py-2 rounded-lg text-xs font-semibold transition border border-gray-100 hover:border-red-100">
+                    Sign Out Session
+                </button>
+            </div>
+        </header>
+
+        <nav class="flex border border-gray-200 p-1 mb-6 bg-white rounded-xl shadow-sm">
+            <button id="tab-logger" class="w-1/2 py-2.5 px-4 text-center rounded-lg bg-blue-600 text-white font-semibold text-sm shadow transition duration-150 focus:outline-none">
+                📌 Daily Tracker View
+            </button>
+            <button id="tab-summary" class="w-1/2 py-2.5 px-4 text-center rounded-lg text-gray-500 hover:text-gray-800 font-semibold text-sm transition duration-150 focus:outline-none">
+                📊 Monthly Aggregates
+            </button>
+        </nav>
+
+        <div id="logger-view" class="space-y-6">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p id="total-card-label" class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Expenses</p>
+                    <p id="monthly-total" class="text-4xl font-extrabold text-gray-900 tracking-tight mt-0.5">$0.00</p>
+                </div>
+                <span id="file-status" class="text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full w-fit">Connecting Storage Database...</span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-fit">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4 tracking-tight">Record Expense</h2>
+                    <form id="expense-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Transaction Date</label>
+                            <input type="date" id="exp-date" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Expense Category</label>
+                            <select id="exp-category" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-sm font-medium text-gray-700">
+                                <option>Food</option>
+                                <option>Transport</option>
+                                <option>Bills & Utilities</option>
+                                <option>Entertainment</option>
+                                <option>Shopping</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
+                                <input type="number" id="exp-amount" step="0.01" placeholder="0.00" required class="w-full pl-8 pr-4 p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-sm font-semibold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Line Description</label>
+                            <input type="text" id="exp-desc" placeholder="What did you acquire?" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-sm">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition">
+                            Save Entry Record
+                        </button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 pb-2 border-b border-gray-100">
+                        <h2 class="text-lg font-bold text-gray-900 tracking-tight">Transaction Log History</h2>
+                        
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <label for="month-filter" class="text-xs text-gray-400 font-bold uppercase whitespace-nowrap tracking-wider">Statement Period:</label>
+                            <select id="month-filter" class="w-full sm:w-auto p-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-semibold text-gray-700">
+                                </select>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-gray-400 text-xs font-bold uppercase tracking-wider bg-gray-50 rounded-lg">
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Category</th>
+                                    <th class="p-3">Description</th>
+                                    <th class="p-3">User</th>
+                                    <th class="p-3 text-right">Amount</th>
+                                    <th class="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expense-table-body" class="text-gray-700 text-sm divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="summary-view" class="hidden bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in">
+            <h2 class="text-xl font-bold text-gray-900 tracking-tight mb-1">Month-Wise Historical Spending Analysis</h2>
+            <p class="text-sm text-gray-500 mb-6">Aggregated reporting breakdown compiling historical spending volumes and transactional frequencies.</p>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-gray-400 text-xs font-bold uppercase tracking-wider bg-gray-50 rounded-lg">
+                            <th class="p-4">Billing Statement Period</th>
+                            <th class="p-4">Total Logged Transactions</th>
+                            <th class="p-4 text-right">Aggregated Net Outflows</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-table-body" class="text-gray-700 text-sm divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="script.js" defer></script>
+</body>
+</html>
