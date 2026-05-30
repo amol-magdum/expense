@@ -215,6 +215,10 @@ async function readJsonFile() {
         if (typeof localData === 'string') {
             localData = JSON.parse(localData);
         }
+        // Shape validation: ensure we always work with { expenses: [] }
+        if (!localData || typeof localData !== 'object') localData = { expenses: [] };
+        if (!Array.isArray(localData.expenses)) localData.expenses = [];
+
         populateMonthFiltersEngine();
         renderHistoryTableScreen();
     } catch (err) {
@@ -284,31 +288,72 @@ function renderHistoryTableScreen() {
     tableBody.innerHTML = "";
     
     const filteredExpenses = (localData.expenses || []).filter(exp => exp.date && exp.date.slice(0, 7) === selectedMonth);
-    const chronologicalSortedData = filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+    // Stable chronological sort for YYYY-MM-DD strings (avoid timezone parsing differences)
+    const chronologicalSortedData = filteredExpenses.sort((a, b) => {
+        const ad = typeof a.date === 'string' ? a.date : '';
+        const bd = typeof b.date === 'string' ? b.date : '';
+        return bd.localeCompare(ad);
+    });
+
     if (chronologicalSortedData.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400 italic bg-gray-50/50">No expenses logged for this statement period.</td></tr>`;
     } else {
         chronologicalSortedData.forEach(exp => {
             const row = document.createElement('tr');
             row.className = "hover:bg-gray-50/70 transition duration-150 group";
-            row.innerHTML = `
-                <td class="p-3 whitespace-nowrap text-gray-500 font-mono text-xs">${exp.date}</td>
-                <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100">${exp.category}</span></td>
-                <td class="p-3 font-medium text-gray-800">${exp.description}</td>
-                <td class="p-3 text-xs text-gray-400 max-w-[90px] truncate font-mono" title="${exp.createdBy}">${exp.createdBy ? exp.createdBy.split('@')[0] : 'System'}</td>
-                <td class="p-3 text-right font-bold text-gray-900">₹${parseFloat(exp.amount || 0).toFixed(2)}</td>
-                <td class="p-3 text-center">
-                    <button onclick="deleteExpenseEntryHook('${exp.id}')" class="text-gray-300 hover:text-red-600 hover:bg-red-50 transition duration-150 inline-flex items-center justify-center p-1.5 rounded-lg border border-transparent hover:border-red-100" title="Delete Expense Entry Line">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </button>
-                </td>
+
+            const tdDate = document.createElement('td');
+            tdDate.className = "p-3 whitespace-nowrap text-gray-500 font-mono text-xs";
+            tdDate.textContent = exp.date || '';
+
+            const tdCategory = document.createElement('td');
+            tdCategory.className = "p-3";
+            const categoryPill = document.createElement('span');
+            categoryPill.className = "px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100";
+            categoryPill.textContent = exp.category || '';
+            tdCategory.appendChild(categoryPill);
+
+            const tdDesc = document.createElement('td');
+            tdDesc.className = "p-3 font-medium text-gray-800";
+            tdDesc.textContent = exp.description || '';
+
+            const tdUser = document.createElement('td');
+            tdUser.className = "p-3 text-xs text-gray-400 max-w-[90px] truncate font-mono";
+            const createdBy = exp.createdBy || '';
+            tdUser.title = createdBy;
+            tdUser.textContent = createdBy ? createdBy.split('@')[0] : 'System';
+
+            const tdAmount = document.createElement('td');
+            tdAmount.className = "p-3 text-right font-bold text-gray-900";
+            tdAmount.textContent = `₹${parseFloat(exp.amount || 0).toFixed(2)}`;
+
+            const tdAction = document.createElement('td');
+            tdAction.className = "p-3 text-center";
+            const delBtn = document.createElement('button');
+            delBtn.className = "text-gray-300 hover:text-red-600 hover:bg-red-50 transition duration-150 inline-flex items-center justify-center p-1.5 rounded-lg border border-transparent hover:border-red-100";
+            delBtn.title = "Delete Expense Entry Line";
+            delBtn.type = 'button';
+            delBtn.addEventListener('click', () => window.deleteExpenseEntryHook(exp.id));
+
+            delBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
             `;
+
+            tdAction.appendChild(delBtn);
+
+            row.appendChild(tdDate);
+            row.appendChild(tdCategory);
+            row.appendChild(tdDesc);
+            row.appendChild(tdUser);
+            row.appendChild(tdAmount);
+            row.appendChild(tdAction);
+
             tableBody.appendChild(row);
         });
     }
+
 
     const [year, month] = selectedMonth.split('-');
     const contextualVerboseDateString = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -377,8 +422,9 @@ expenseForm.onsubmit = async (e) => {
         createdBy: userEmail
     };
 
-    await readJsonFile();
+    // Use in-memory state to avoid an extra Drive read on every add
     localData.expenses.push(newExpense);
+
     
     // Automatically match active dropdown display selection state back to item context
     selectedMonth = contextPickedDate.slice(0, 7);
