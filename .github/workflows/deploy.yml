@@ -3,7 +3,7 @@ name: Deploy Expense Tracker
 on:
   push:
     branches:
-      - main  # Triggers the deployment whenever you push to your main branch
+      - master  # Triggers the deployment whenever you push to your main branch
 
 permissions:
   contents: write
