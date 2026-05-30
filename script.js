@@ -312,7 +312,7 @@ function renderHistoryTableScreen() {
 
     const [year, month] = selectedMonth.split('-');
     const contextualVerboseDateString = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    totalCardLabel.innerText = `Total Net Outflow Expenses (${contextualVerboseDateString})`;
+    totalCardLabel.innerText = `Total Expenses (${contextualVerboseDateString})`;
     monthlyTotal.innerText = `$${calculateSelectedMonthAggregate().toFixed(2)}`;
 }
 
