@@ -372,10 +372,12 @@ function renderHistoryTableScreen() {
 
             const tdDate = document.createElement('td');
             tdDate.className = "p-3 whitespace-nowrap text-gray-500 font-mono text-xs";
+            tdDate.setAttribute('data-label', 'Date');
             tdDate.textContent = exp.date || '';
 
             const tdCategory = document.createElement('td');
             tdCategory.className = "p-3";
+            tdCategory.setAttribute('data-label', 'Category');
             const categoryPill = document.createElement('span');
             categoryPill.className = "px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100";
             categoryPill.textContent = exp.category || '';
@@ -383,16 +385,18 @@ function renderHistoryTableScreen() {
 
             const tdDesc = document.createElement('td');
             tdDesc.className = "p-3 font-medium text-gray-800";
+            tdDesc.setAttribute('data-label', 'Description');
             tdDesc.textContent = exp.description || '';
 
             const tdUser = document.createElement('td');
-            tdUser.className = "p-3 text-xs text-gray-400 max-w-[90px] truncate font-mono";
+            tdUser.className = "p-3 text-xs text-gray-400 max-w-[90px] truncate font-mono hidden md:table-cell";
             const createdBy = exp.createdBy || '';
             tdUser.title = createdBy;
             tdUser.textContent = createdBy ? createdBy.split('@')[0] : 'System';
 
             const tdAmount = document.createElement('td');
             tdAmount.className = "p-3 text-right font-bold text-gray-900";
+            tdAmount.setAttribute('data-label', 'Amount');
             tdAmount.textContent = `₹${parseFloat(exp.amount || 0).toFixed(2)}`;
 
             const tdAction = document.createElement('td');
