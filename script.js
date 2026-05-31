@@ -8,6 +8,7 @@ const FILE_NAME = 'app_expenses.json';
 
 let tokenClient;
 let accessToken = null;
+let refreshTimerId = null;
 let fileId = null;
 let localData = { expenses: [] };
 let userEmail = "";
@@ -48,8 +49,10 @@ window.onload = function () {
     
     if (isSessionValid) {
         accessToken = savedToken;
+        scheduleTokenRefresh(parseInt(expiry));
     } else {
-        localStorage.clear();
+        localStorage.removeItem('drive_expense_token');
+        localStorage.removeItem('drive_expense_token_expiry');
     }
     
     gapi.load('client', async () => {
@@ -64,8 +67,11 @@ window.onload = function () {
         } catch (err) {
             console.error("GAPI initialization error context hook:", err);
             if (isSessionValid) {
-                gapi.client.setToken({ access_token: accessToken });
-                await launchAppEngine();
+                // Init failed with an existing session; clear it so the user can re-authenticate cleanly
+                // instead of silently re-running the success path against an uninitialized client.
+                localStorage.removeItem('drive_expense_token');
+                localStorage.removeItem('drive_expense_token_expiry');
+                accessToken = null;
             }
         }
     });
@@ -84,6 +90,8 @@ window.onload = function () {
             
             localStorage.setItem('drive_expense_token', accessToken);
             localStorage.setItem('drive_expense_token_expiry', expiryTimestamp.toString());
+            
+            scheduleTokenRefresh(expiryTimestamp);
             
             gapi.client.setToken({ access_token: accessToken });
             await launchAppEngine();
@@ -112,6 +120,28 @@ window.onload = function () {
     tabLogger.onclick = () => showScreenView('logger');
     tabSummary.onclick = () => showScreenView('summary');
 };
+
+// --- TOKEN LIFECYCLE ---
+// Proactively request a fresh token a little before the stored expiry so the session
+// never lapses mid-use. expiryTimestamp already includes a 5-minute safety buffer.
+function scheduleTokenRefresh(expiryTimestamp) {
+    if (refreshTimerId !== null) {
+        clearTimeout(refreshTimerId);
+        refreshTimerId = null;
+    }
+
+    const msUntilRefresh = expiryTimestamp - Date.now();
+    if (msUntilRefresh <= 0) {
+        // Already within the buffer window; refresh immediately.
+        if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+        return;
+    }
+
+    refreshTimerId = setTimeout(() => {
+        refreshTimerId = null;
+        if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+    }, msUntilRefresh);
+}
 
 // --- MULTI-SCREEN NAVIGATION ENGINE SWITCH ---
 function showScreenView(targetView) {
@@ -142,7 +172,7 @@ async function launchAppEngine() {
         }).then(res => res.json());
         
         userEmail = userInfo.email;
-        document.getElementById('user-email').innerText = `Sync Profile: ${userEmail}`;
+        document.getElementById('user-email').textContent = `Sync Profile: ${userEmail}`;
         
         await syncDriveCloudFile();
     } catch (err) {
@@ -152,13 +182,18 @@ async function launchAppEngine() {
 }
 
 function terminateSession() {
-    localStorage.clear();
+    if (refreshTimerId !== null) {
+        clearTimeout(refreshTimerId);
+        refreshTimerId = null;
+    }
+    localStorage.removeItem('drive_expense_token');
+    localStorage.removeItem('drive_expense_token_expiry');
     location.reload();
 }
 
 // --- CLOUD DATABASING FILE CONTROLS ---
 async function syncDriveCloudFile() {
-    fileStatus.innerText = "Scanning Drive Storage...";
+    fileStatus.textContent = "Scanning Drive Storage...";
     try {
         const response = await gapi.client.drive.files.list({
             q: `name = '${FILE_NAME}' and trashed = false`,
@@ -169,16 +204,16 @@ async function syncDriveCloudFile() {
         const files = response.result.files;
         if (files && files.length > 0) {
             fileId = files[0].id;
-            fileStatus.innerText = "Cloud Connection Established";
+            fileStatus.textContent = "Cloud Connection Established";
             fileStatus.className = "text-xs font-medium bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-full w-fit";
             await readJsonFile();
         } else {
-            fileStatus.innerText = "Building Cloud Registry File...";
+            fileStatus.textContent = "Building Cloud Registry File...";
             await createJsonFile();
         }
     } catch (err) {
         console.error("Cloud lookup fault error registry context:", err);
-        fileStatus.innerText = "Database File Error Connection Loss";
+        fileStatus.textContent = "Database File Error Connection Loss";
         fileStatus.className = "text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full w-fit";
     }
 }
@@ -226,8 +261,30 @@ async function readJsonFile() {
     }
 }
 
+// Serializes Drive writes so overlapping saves can't complete out of order and
+// overwrite newer data with older. The latest in-memory state is always written last.
+let isWriting = false;
+let pendingWrite = false;
+
+async function persistData() {
+    if (isWriting) {
+        pendingWrite = true;
+        return;
+    }
+    isWriting = true;
+    try {
+        await writeJsonFile();
+    } finally {
+        isWriting = false;
+        if (pendingWrite) {
+            pendingWrite = false;
+            persistData();
+        }
+    }
+}
+
 async function writeJsonFile() {
-    fileStatus.innerText = "Pushing data logs up to Drive...";
+    fileStatus.textContent = "Pushing data logs up to Drive...";
     fileStatus.className = "text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full w-fit";
     try {
         await gapi.client.request({
@@ -236,17 +293,20 @@ async function writeJsonFile() {
             'params': { 'uploadType': 'media' },
             'body': JSON.stringify(localData)
         });
-        fileStatus.innerText = "Cloud Sync Secured";
+        fileStatus.textContent = "Cloud Sync Secured";
         fileStatus.className = "text-xs font-medium bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-full w-fit";
     } catch (err) {
         console.error("Cloud ingestion transmission write lock failure fault:", err);
+        fileStatus.textContent = "Unsaved changes \u2014 sync failed. Will retry on next change.";
+        fileStatus.className = "text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full w-fit";
     }
 }
 
 // --- STATEMENT FILTER SEPARATION COMPILATIONS ---
 function populateMonthFiltersEngine() {
     const monthsSet = new Set();
-    const currentCalendarMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const today = new Date();
+    const currentCalendarMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     monthsSet.add(currentCalendarMonth);
 
     (localData.expenses || []).forEach(exp => {
@@ -264,7 +324,7 @@ function populateMonthFiltersEngine() {
         
         const [year, month] = m.split('-');
         const dateConversionObj = new Date(year, parseInt(month) - 1, 1);
-        opt.innerText = dateConversionObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        opt.textContent = dateConversionObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         
         monthFilterSelect.appendChild(opt);
     });
@@ -272,13 +332,19 @@ function populateMonthFiltersEngine() {
     monthFilterSelect.value = selectedMonth;
 }
 
+// Round to 2 decimals to avoid floating-point drift accumulating across many entries.
+function roundMoney(value) {
+    return Math.round((parseFloat(value) || 0) * 100) / 100;
+}
+
 function calculateSelectedMonthAggregate() {
-    return (localData.expenses || []).reduce((sum, exp) => {
+    const total = (localData.expenses || []).reduce((sum, exp) => {
         if (exp.date && exp.date.slice(0, 7) === selectedMonth) {
-            return sum + parseFloat(exp.amount || 0);
+            return sum + (parseFloat(exp.amount) || 0);
         }
         return sum;
     }, 0);
+    return roundMoney(total);
 }
 
 // --- RENDERING VIEWS MECHANIC CONTROLLER ---
@@ -298,6 +364,8 @@ function renderHistoryTableScreen() {
     if (chronologicalSortedData.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400 italic bg-gray-50/50">No expenses logged for this statement period.</td></tr>`;
     } else {
+        // Build all rows into a fragment and append once to avoid repeated reflows.
+        const fragment = document.createDocumentFragment();
         chronologicalSortedData.forEach(exp => {
             const row = document.createElement('tr');
             row.className = "hover:bg-gray-50/70 transition duration-150 group";
@@ -350,15 +418,16 @@ function renderHistoryTableScreen() {
             row.appendChild(tdAmount);
             row.appendChild(tdAction);
 
-            tableBody.appendChild(row);
+            fragment.appendChild(row);
         });
+        tableBody.appendChild(fragment);
     }
 
 
     const [year, month] = selectedMonth.split('-');
     const contextualVerboseDateString = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    totalCardLabel.innerText = `Total Expenses (${contextualVerboseDateString})`;
-    monthlyTotal.innerText = `₹${calculateSelectedMonthAggregate().toFixed(2)}`;
+    totalCardLabel.textContent = `Total Expenses (${contextualVerboseDateString})`;
+    monthlyTotal.textContent = `₹${calculateSelectedMonthAggregate().toFixed(2)}`;
 }
 
 // Render Screen View State 3: Monthly Aggregate Reports Graph List 
@@ -400,40 +469,62 @@ function renderMonthlyBreakdownScreen() {
 }
 
 // --- ACTIONS & ROW HANDLERS ---
-window.deleteExpenseEntryHook = function (expenseId) {
+window.deleteExpenseEntryHook = async function (expenseId) {
     if (!confirm('Are you sure you want to permanently delete this expense line item?')) return;
     localData.expenses = (localData.expenses || []).filter(exp => exp.id !== expenseId);
     
     populateMonthFiltersEngine();
     renderHistoryTableScreen();
-    writeJsonFile();
+    await persistData();
 };
 
+let isSubmittingExpense = false;
 expenseForm.onsubmit = async (e) => {
     e.preventDefault();
-    
+    if (isSubmittingExpense) return; // Prevent duplicate submissions from rapid double-taps
+
     const contextPickedDate = document.getElementById('exp-date').value;
+    const parsedAmount = parseFloat(document.getElementById('exp-amount').value);
+
+    // Validate at the input boundary before mutating state.
+    if (!contextPickedDate) {
+        alert('Please select a valid date for this expense.');
+        return;
+    }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        alert('Please enter an amount greater than zero.');
+        return;
+    }
+
     const newExpense = {
         id: 'exp_' + Date.now(),
         date: contextPickedDate,
         category: document.getElementById('exp-category').value,
-        amount: parseFloat(document.getElementById('exp-amount').value) || 0,
+        amount: roundMoney(parsedAmount),
         description: document.getElementById('exp-desc').value,
         createdBy: userEmail
     };
 
-    // Use in-memory state to avoid an extra Drive read on every add
-    localData.expenses.push(newExpense);
+    isSubmittingExpense = true;
+    const submitBtn = expenseForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    
-    // Automatically match active dropdown display selection state back to item context
-    selectedMonth = contextPickedDate.slice(0, 7);
-    
-    populateMonthFiltersEngine();
-    renderHistoryTableScreen();
-    
-    document.getElementById('exp-amount').value = '';
-    document.getElementById('exp-desc').value = '';
-    
-    await writeJsonFile();
+    try {
+        // Use in-memory state to avoid an extra Drive read on every add
+        localData.expenses.push(newExpense);
+
+        // Automatically match active dropdown display selection state back to item context
+        selectedMonth = contextPickedDate.slice(0, 7);
+
+        populateMonthFiltersEngine();
+        renderHistoryTableScreen();
+
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-desc').value = '';
+
+        await persistData();
+    } finally {
+        isSubmittingExpense = false;
+        if (submitBtn) submitBtn.disabled = false;
+    }
 };
