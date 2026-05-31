@@ -32,3 +32,83 @@
 ::-webkit-scrollbar-thumb:hover {
     background: #cbd5e1;
 }
+
+/* Respect notch / rounded-corner safe areas when installed as a PWA */
+body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS Safari zooms in when focusing inputs whose font-size is < 16px.
+   Force 16px on small screens to prevent the disruptive auto-zoom. */
+@media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
+/* Responsive transaction table: collapse rows into stacked cards on phones.
+   Each cell shows its column name via the data-label attribute set in script.js. */
+@media (max-width: 640px) {
+    .expense-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .expense-table,
+    .expense-table tbody,
+    .expense-table tr,
+    .expense-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .expense-table tr {
+        margin-bottom: 0.75rem;
+        border: 1px solid #f3f4f6;
+        border-radius: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        background: #fff;
+    }
+
+    .expense-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        text-align: right;
+        padding: 0.5rem 0.25rem;
+        border: 0;
+        border-bottom: 1px solid #f9fafb;
+        max-width: none;
+    }
+
+    .expense-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .expense-table td::before {
+        content: attr(data-label);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9ca3af;
+        text-align: left;
+    }
+
+    /* Empty-state full-width row should not render the label pseudo-element */
+    .expense-table td[colspan]::before {
+        content: "";
+    }
+}

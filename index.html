@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Expense Tracker</title>
 
     <!-- PWA -->
     <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Expense">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -15,9 +19,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-50 min-h-screen font-sans antialiased text-gray-900">
+<body class="bg-gray-50 min-h-dvh font-sans antialiased text-gray-900">
 
-    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen px-4">
+    <div id="login-screen" class="flex flex-col items-center justify-center min-h-dvh px-4">
         <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100">
             <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-2xl mb-4">
                 <span class="text-3xl">💸</span>
@@ -121,13 +125,13 @@
                     </div>
                     
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                        <table class="expense-table w-full text-left border-collapse">
                             <thead>
                                 <tr class="text-gray-400 text-xs font-bold uppercase tracking-wider bg-gray-50 rounded-lg">
                                     <th class="p-3">Date</th>
                                     <th class="p-3">Category</th>
                                     <th class="p-3">Description</th>
-                                    <th class="p-3">User</th>
+                                    <th class="p-3 hidden md:table-cell">User</th>
                                     <th class="p-3 text-right">Amount</th>
                                     <th class="p-3 text-center">Action</th>
                                 </tr>
@@ -176,4 +180,3 @@
     </script>
 </body>
 </html>
-
