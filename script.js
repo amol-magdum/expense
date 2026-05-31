@@ -6,6 +6,10 @@ const API_KEY = 'G_API_KEY_PLACEHOLDER';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const FILE_NAME = 'app_expenses.json';
 
+// When set, the app reads/writes this exact Drive file (a household file shared by
+// another member) instead of searching for / creating the user's own file.
+const HOUSEHOLD_FILE_KEY = 'household_file_id';
+
 let tokenClient;
 let accessToken = null;
 let refreshTimerId = null;
@@ -25,6 +29,15 @@ const logoutBtn = document.getElementById('logout-btn');
 const menuBtn = document.getElementById('menu-btn');
 const menuPanel = document.getElementById('menu-panel');
 const fileStatus = document.getElementById('file-status');
+
+// Household sharing controls
+const householdIdInput = document.getElementById('household-id');
+const copyHouseholdBtn = document.getElementById('copy-household-btn');
+const inviteEmailInput = document.getElementById('invite-email');
+const inviteBtn = document.getElementById('invite-btn');
+const joinIdInput = document.getElementById('join-id');
+const joinBtn = document.getElementById('join-btn');
+const householdStatus = document.getElementById('household-status');
 const monthlyTotal = document.getElementById('monthly-total');
 const totalCardLabel = document.getElementById('total-card-label');
 const tableBody = document.getElementById('expense-table-body');
@@ -104,6 +117,10 @@ window.onload = function () {
         e.stopPropagation();
         menuPanel.classList.toggle('hidden');
     };
+
+    copyHouseholdBtn.onclick = copyHouseholdId;
+    inviteBtn.onclick = inviteHouseholdMember;
+    joinBtn.onclick = joinHousehold;
 
     document.addEventListener('click', (event) => {
         if (!menuPanel.contains(event.target) && !menuBtn.contains(event.target)) {
@@ -194,6 +211,29 @@ function terminateSession() {
 // --- CLOUD DATABASING FILE CONTROLS ---
 async function syncDriveCloudFile() {
     fileStatus.textContent = "Scanning Drive Storage...";
+
+    // If the user joined a household, read/write that shared file directly by ID.
+    // Files created by this app remain accessible to anyone the file is shared with
+    // (drive.file scope grants per-file access to files the app created or opened).
+    const householdFileId = localStorage.getItem(HOUSEHOLD_FILE_KEY);
+    if (householdFileId) {
+        try {
+            await gapi.client.drive.files.get({ fileId: householdFileId, fields: 'id' });
+            fileId = householdFileId;
+            fileStatus.textContent = "Connected to Household File";
+            fileStatus.className = "text-xs font-medium bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-full w-fit";
+            updateHouseholdIdDisplay();
+            await readJsonFile();
+            return;
+        } catch (err) {
+            console.error("Household file access error context:", err);
+            fileStatus.textContent = "Household File Not Accessible";
+            fileStatus.className = "text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full w-fit";
+            setHouseholdStatus("Couldn't open that household file. Make sure the owner shared it with " + (userEmail || "your account") + ", then try Join again.", true);
+            return;
+        }
+    }
+
     try {
         const response = await gapi.client.drive.files.list({
             q: `name = '${FILE_NAME}' and trashed = false`,
@@ -206,6 +246,7 @@ async function syncDriveCloudFile() {
             fileId = files[0].id;
             fileStatus.textContent = "Cloud Connection Established";
             fileStatus.className = "text-xs font-medium bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-full w-fit";
+            updateHouseholdIdDisplay();
             await readJsonFile();
         } else {
             fileStatus.textContent = "Building Cloud Registry File...";
@@ -217,6 +258,89 @@ async function syncDriveCloudFile() {
         fileStatus.className = "text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full w-fit";
     }
 }
+
+// --- HOUSEHOLD SHARING ---
+function setHouseholdStatus(message, isError) {
+    if (!householdStatus) return;
+    householdStatus.textContent = message;
+    householdStatus.classList.remove('hidden');
+    householdStatus.className = isError
+        ? "text-[11px] mt-2 leading-snug text-red-600"
+        : "text-[11px] mt-2 leading-snug text-green-600";
+}
+
+function updateHouseholdIdDisplay() {
+    if (householdIdInput) householdIdInput.value = fileId || "";
+}
+
+async function copyHouseholdId() {
+    if (!fileId) {
+        setHouseholdStatus("No household file is connected yet.", true);
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(fileId);
+        setHouseholdStatus("Household ID copied. Share it with your household members.", false);
+    } catch (err) {
+        // Clipboard can be blocked (e.g. insecure context); fall back to selecting the field.
+        if (householdIdInput) {
+            householdIdInput.focus();
+            householdIdInput.select();
+        }
+        setHouseholdStatus("Copy failed — the ID is selected, press Ctrl/Cmd+C to copy.", true);
+    }
+}
+
+async function inviteHouseholdMember() {
+    const email = (inviteEmailInput.value || "").trim();
+    if (!email) {
+        setHouseholdStatus("Enter the member's Google account email to invite.", true);
+        return;
+    }
+    if (!fileId) {
+        setHouseholdStatus("No household file is connected yet.", true);
+        return;
+    }
+
+    inviteBtn.disabled = true;
+    try {
+        await gapi.client.drive.permissions.create({
+            fileId: fileId,
+            sendNotificationEmail: true,
+            resource: { type: 'user', role: 'writer', emailAddress: email }
+        });
+        inviteEmailInput.value = "";
+        setHouseholdStatus(`Invited ${email}. Share your Household ID so they can Join.`, false);
+    } catch (err) {
+        console.error("Household invite error context:", err);
+        setHouseholdStatus("Couldn't invite that member. Only the file owner can share it.", true);
+    } finally {
+        inviteBtn.disabled = false;
+    }
+}
+
+async function joinHousehold() {
+    const newId = (joinIdInput.value || "").trim();
+    if (!newId) {
+        setHouseholdStatus("Paste the Household ID shared with you.", true);
+        return;
+    }
+
+    joinBtn.disabled = true;
+    try {
+        // Verify access before persisting so we don't lock the app onto an unreachable file.
+        await gapi.client.drive.files.get({ fileId: newId, fields: 'id' });
+        localStorage.setItem(HOUSEHOLD_FILE_KEY, newId);
+        setHouseholdStatus("Joined household. Reloading shared expenses...", false);
+        setTimeout(() => location.reload(), 800);
+    } catch (err) {
+        console.error("Household join error context:", err);
+        setHouseholdStatus("Can't access that file. Ask the owner to share it with " + (userEmail || "your account") + ".", true);
+    } finally {
+        joinBtn.disabled = false;
+    }
+}
+
 
 async function createJsonFile() {
     const boundary = 'foo_bar_baz';
@@ -239,6 +363,7 @@ async function createJsonFile() {
 
     fileId = response.result.id;
     localData = { expenses: [] };
+    updateHouseholdIdDisplay();
     populateMonthFiltersEngine();
     renderHistoryTableScreen();
 }

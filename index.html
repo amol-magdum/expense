@@ -51,8 +51,40 @@
                 <h1 class="text-xl font-bold tracking-tight text-gray-900">Dashboard</h1>
             </div>
 
-            <div id="menu-panel" class="hidden absolute top-full left-5 mt-2 w-72 bg-white rounded-xl shadow-lg p-4 z-30 border border-gray-100">
-                <p id="user-email" class="text-xs text-gray-500 font-mono truncate mb-3">Loading user configuration...</p>
+            <div id="menu-panel" class="hidden absolute top-full left-5 mt-2 w-80 bg-white rounded-xl shadow-lg p-4 z-30 border border-gray-100">
+                <p id="user-email" class="text-xs text-gray-500 font-mono truncate mb-4">Loading user configuration...</p>
+
+                <div class="border-t border-gray-100 pt-4 mb-4">
+                    <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">🏠 Household Sharing</p>
+                    <p class="text-[11px] text-gray-400 mb-3 leading-snug">Share one expense file with your household so everyone records into the same place.</p>
+
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Your Household ID</label>
+                    <div class="flex items-center gap-2 mb-3">
+                        <input id="household-id" type="text" readonly class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px] font-mono text-gray-600 outline-none truncate" placeholder="Connecting...">
+                        <button id="copy-household-btn" type="button" class="shrink-0 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 text-gray-600 px-3 py-2 rounded-lg text-xs font-semibold transition border border-gray-100">
+                            Copy
+                        </button>
+                    </div>
+
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Invite member by email</label>
+                    <div class="flex items-center gap-2 mb-3">
+                        <input id="invite-email" type="email" class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="member@gmail.com">
+                        <button id="invite-btn" type="button" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+                            Invite
+                        </button>
+                    </div>
+
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Join a household</label>
+                    <div class="flex items-center gap-2">
+                        <input id="join-id" type="text" class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="Paste Household ID">
+                        <button id="join-btn" type="button" class="shrink-0 bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+                            Join
+                        </button>
+                    </div>
+
+                    <p id="household-status" class="hidden text-[11px] mt-2 leading-snug"></p>
+                </div>
+
                 <button id="logout-btn" class="w-full bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-700 px-4 py-2 rounded-lg text-xs font-semibold transition border border-gray-100 hover:border-red-100">
                     Sign Out Session
                 </button>
@@ -180,3 +212,4 @@
     </script>
 </body>
 </html>
+
