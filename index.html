@@ -75,12 +75,10 @@
                     </div>
 
                     <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Join a household</label>
-                    <div class="flex items-center gap-2">
-                        <input id="join-id" type="text" class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="Paste Household ID">
-                        <button id="join-btn" type="button" class="shrink-0 bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
-                            Join
-                        </button>
-                    </div>
+                    <p class="text-[11px] text-gray-400 mb-2 leading-snug">After the owner invites you, pick the shared <span class="font-mono">app_expenses.json</span> file to connect.</p>
+                    <button id="join-btn" type="button" class="w-full bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+                        Select Shared File
+                    </button>
 
                     <p id="household-status" class="hidden text-[11px] mt-2 leading-snug"></p>
                 </div>
@@ -212,4 +210,3 @@
     </script>
 </body>
 </html>
-
