@@ -16,6 +16,7 @@ let refreshTimerId = null;
 let fileId = null;
 let localData = { expenses: [] };
 let userEmail = "";
+let pickerApiLoaded = false;
 
 // State Machine Initialization Tracker
 const now = new Date();
@@ -35,7 +36,6 @@ const householdIdInput = document.getElementById('household-id');
 const copyHouseholdBtn = document.getElementById('copy-household-btn');
 const inviteEmailInput = document.getElementById('invite-email');
 const inviteBtn = document.getElementById('invite-btn');
-const joinIdInput = document.getElementById('join-id');
 const joinBtn = document.getElementById('join-btn');
 const householdStatus = document.getElementById('household-status');
 const monthlyTotal = document.getElementById('monthly-total');
@@ -89,6 +89,8 @@ window.onload = function () {
         }
     });
 
+    gapi.load('picker', () => { pickerApiLoaded = true; });
+
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
@@ -120,7 +122,7 @@ window.onload = function () {
 
     copyHouseholdBtn.onclick = copyHouseholdId;
     inviteBtn.onclick = inviteHouseholdMember;
-    joinBtn.onclick = joinHousehold;
+    joinBtn.onclick = openHouseholdPicker;
 
     document.addEventListener('click', (event) => {
         if (!menuPanel.contains(event.target) && !menuBtn.contains(event.target)) {
@@ -229,7 +231,7 @@ async function syncDriveCloudFile() {
             console.error("Household file access error context:", err);
             fileStatus.textContent = "Household File Not Accessible";
             fileStatus.className = "text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full w-fit";
-            setHouseholdStatus("Couldn't open that household file. Make sure the owner shared it with " + (userEmail || "your account") + ", then try Join again.", true);
+            setHouseholdStatus("Couldn't open that household file. Make sure the owner shared it with " + (userEmail || "your account") + ", then use Select Shared File again.", true);
             return;
         }
     }
@@ -319,26 +321,52 @@ async function inviteHouseholdMember() {
     }
 }
 
-async function joinHousehold() {
-    const newId = (joinIdInput.value || "").trim();
-    if (!newId) {
-        setHouseholdStatus("Paste the Household ID shared with you.", true);
+async function openHouseholdPicker() {
+    if (!pickerApiLoaded || typeof google === 'undefined' || !google.picker) {
+        setHouseholdStatus("File picker is still loading. Please try again in a moment.", true);
+        return;
+    }
+    if (!accessToken) {
+        setHouseholdStatus("Sign in first, then select the shared file.", true);
         return;
     }
 
-    joinBtn.disabled = true;
-    try {
-        // Verify access before persisting so we don't lock the app onto an unreachable file.
-        await gapi.client.drive.files.get({ fileId: newId, fields: 'id' });
-        localStorage.setItem(HOUSEHOLD_FILE_KEY, newId);
-        setHouseholdStatus("Joined household. Reloading shared expenses...", false);
-        setTimeout(() => location.reload(), 800);
-    } catch (err) {
-        console.error("Household join error context:", err);
-        setHouseholdStatus("Can't access that file. Ask the owner to share it with " + (userEmail || "your account") + ".", true);
-    } finally {
-        joinBtn.disabled = false;
+    // With the drive.file scope, the app can only access a file shared by another
+    // member after the user explicitly selects it through the Google Picker. This
+    // selection is what grants the app per-file access to the shared household file.
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setMode(google.picker.DocsViewMode.LIST)
+        .setIncludeFolders(false)
+        .setOwnedByMe(false)        // show files shared with the user, not just their own
+        .setMimeTypes('application/json');
+
+    const picker = new google.picker.PickerBuilder()
+        .setAppId(CLIENT_ID.split('-')[0])   // Cloud project number, derived from the client ID
+        .setOAuthToken(accessToken)
+        .setDeveloperKey(API_KEY)
+        .addView(view)
+        .setTitle('Select your household expense file (app_expenses.json)')
+        .setCallback(handlePickerResult)
+        .build();
+
+    picker.setVisible(true);
+}
+
+function handlePickerResult(data) {
+    if (!data || data[google.picker.Response.ACTION] !== google.picker.Action.PICKED) {
+        return;
     }
+
+    const doc = data[google.picker.Response.DOCUMENTS] && data[google.picker.Response.DOCUMENTS][0];
+    const pickedId = doc && doc[google.picker.Document.ID];
+    if (!pickedId) {
+        setHouseholdStatus("No file was selected.", true);
+        return;
+    }
+
+    localStorage.setItem(HOUSEHOLD_FILE_KEY, pickedId);
+    setHouseholdStatus("Connected to household file. Reloading shared expenses...", false);
+    setTimeout(() => location.reload(), 800);
 }
 
 
