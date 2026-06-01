@@ -340,15 +340,21 @@ async function openHouseholdPicker() {
         .setOwnedByMe(false)        // show files shared with the user, not just their own
         .setMimeTypes('application/json');
 
-    const picker = new google.picker.PickerBuilder()
+    // The OAuth token alone authorizes Drive access in the Picker. A developer key is
+    // only added when one is configured; passing an unset/referrer-restricted key here
+    // is what triggers "API developer key invalid" on some devices, so it stays optional.
+    const builder = new google.picker.PickerBuilder()
         .setAppId(CLIENT_ID.split('-')[0])   // Cloud project number, derived from the client ID
         .setOAuthToken(accessToken)
-        .setDeveloperKey(API_KEY)
         .addView(view)
         .setTitle('Select your household expense file (app_expenses.json)')
-        .setCallback(handlePickerResult)
-        .build();
+        .setCallback(handlePickerResult);
 
+    if (API_KEY && API_KEY !== 'AIzaSyCjR3KuwmT4Hu-5fk11SWD5b48TwIyQwek') {
+        builder.setDeveloperKey(API_KEY);
+    }
+
+    const picker = builder.build();
     picker.setVisible(true);
 }
 
