@@ -6,6 +6,9 @@ const API_KEY = 'G_API_KEY_PLACEHOLDER';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const FILE_NAME = 'app_expenses.json';
 
+// Used when the Drive file has no saved category list yet (first run or legacy files).
+const DEFAULT_CATEGORIES = ['Food', 'Transport', 'Bills & Utilities', 'Entertainment', 'Shopping', 'Other'];
+
 // When set, the app reads/writes this exact Drive file (a household file shared by
 // another member) instead of searching for / creating the user's own file.
 const HOUSEHOLD_FILE_KEY = 'household_file_id';
@@ -29,6 +32,9 @@ const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const menuBtn = document.getElementById('menu-btn');
 const menuPanel = document.getElementById('menu-panel');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsBackBtn = document.getElementById('settings-back-btn');
+const settingsView = document.getElementById('settings-view');
 const fileStatus = document.getElementById('file-status');
 
 // Household sharing controls
@@ -38,6 +44,13 @@ const inviteEmailInput = document.getElementById('invite-email');
 const inviteBtn = document.getElementById('invite-btn');
 const joinBtn = document.getElementById('join-btn');
 const householdStatus = document.getElementById('household-status');
+
+// Category management controls
+const expCategorySelect = document.getElementById('exp-category');
+const newCategoryInput = document.getElementById('new-category');
+const addCategoryBtn = document.getElementById('add-category-btn');
+const categoryListEl = document.getElementById('category-list');
+const categoryStatus = document.getElementById('category-status');
 const monthlyTotal = document.getElementById('monthly-total');
 const totalCardLabel = document.getElementById('total-card-label');
 const tableBody = document.getElementById('expense-table-body');
@@ -120,9 +133,23 @@ window.onload = function () {
         menuPanel.classList.toggle('hidden');
     };
 
+    settingsBtn.onclick = () => {
+        menuPanel.classList.add('hidden');
+        showScreenView('settings');
+    };
+    settingsBackBtn.onclick = () => showScreenView('logger');
+
     copyHouseholdBtn.onclick = copyHouseholdId;
     inviteBtn.onclick = inviteHouseholdMember;
     joinBtn.onclick = openHouseholdPicker;
+
+    addCategoryBtn.onclick = addCategory;
+    newCategoryInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addCategory();
+        }
+    });
 
     document.addEventListener('click', (event) => {
         if (!menuPanel.contains(event.target) && !menuBtn.contains(event.target)) {
@@ -164,6 +191,20 @@ function scheduleTokenRefresh(expiryTimestamp) {
 
 // --- MULTI-SCREEN NAVIGATION ENGINE SWITCH ---
 function showScreenView(targetView) {
+    // The tab bar belongs to the main dashboard; hide it on the settings page.
+    const navTabs = tabLogger.parentElement;
+
+    if (targetView === 'settings') {
+        navTabs.classList.add('hidden');
+        loggerView.classList.add('hidden');
+        summaryView.classList.add('hidden');
+        settingsView.classList.remove('hidden');
+        return;
+    }
+
+    navTabs.classList.remove('hidden');
+    settingsView.classList.add('hidden');
+
     if (targetView === 'logger') {
         tabLogger.className = "w-1/2 py-2.5 px-4 text-center rounded-lg bg-blue-600 text-white font-semibold text-sm shadow transition duration-150 focus:outline-none";
         tabSummary.className = "w-1/2 py-2.5 px-4 text-center rounded-lg text-gray-500 hover:text-gray-800 font-semibold text-sm transition duration-150 focus:outline-none";
@@ -375,13 +416,105 @@ function handlePickerResult(data) {
     setTimeout(() => location.reload(), 800);
 }
 
+// --- CATEGORY MANAGEMENT ---
+function setCategoryStatus(message, isError) {
+    if (!categoryStatus) return;
+    categoryStatus.textContent = message;
+    categoryStatus.classList.remove('hidden');
+    categoryStatus.className = isError
+        ? "text-[11px] mt-2 leading-snug text-red-600"
+        : "text-[11px] mt-2 leading-snug text-green-600";
+}
+
+function getCategories() {
+    return Array.isArray(localData.categories) && localData.categories.length
+        ? localData.categories
+        : DEFAULT_CATEGORIES;
+}
+
+// Rebuilds both the form dropdown and the removable chip list in the menu.
+function renderCategories() {
+    const categories = getCategories();
+
+    if (expCategorySelect) {
+        const previous = expCategorySelect.value;
+        expCategorySelect.innerHTML = "";
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            expCategorySelect.appendChild(opt);
+        });
+        // Preserve the user's current pick if it still exists.
+        if (categories.includes(previous)) expCategorySelect.value = previous;
+    }
+
+    if (categoryListEl) {
+        categoryListEl.innerHTML = "";
+        categories.forEach(cat => {
+            const chip = document.createElement('span');
+            chip.className = "inline-flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-700 text-[11px] font-medium pl-2.5 pr-1 py-1 rounded-full";
+
+            const label = document.createElement('span');
+            label.textContent = cat;
+            chip.appendChild(label);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.title = `Remove ${cat}`;
+            removeBtn.className = "text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full w-4 h-4 flex items-center justify-center leading-none transition";
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => removeCategory(cat));
+            chip.appendChild(removeBtn);
+
+            categoryListEl.appendChild(chip);
+        });
+    }
+}
+
+async function addCategory() {
+    const name = (newCategoryInput.value || "").trim();
+    if (!name) {
+        setCategoryStatus("Enter a category name.", true);
+        return;
+    }
+
+    const categories = getCategories();
+    // Case-insensitive duplicate guard so "Food" and "food" don't both appear.
+    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
+        setCategoryStatus(`"${name}" already exists.`, true);
+        return;
+    }
+
+    localData.categories = [...categories, name];
+    newCategoryInput.value = "";
+    renderCategories();
+    if (expCategorySelect) expCategorySelect.value = name;
+    setCategoryStatus(`Added "${name}".`, false);
+    await persistData();
+}
+
+async function removeCategory(name) {
+    const categories = getCategories();
+    if (categories.length <= 1) {
+        setCategoryStatus("Keep at least one category.", true);
+        return;
+    }
+    if (!confirm(`Remove the "${name}" category? Existing expenses already saved with it are not changed.`)) return;
+
+    localData.categories = categories.filter(c => c !== name);
+    renderCategories();
+    setCategoryStatus(`Removed "${name}".`, false);
+    await persistData();
+}
+
 
 async function createJsonFile() {
     const boundary = 'foo_bar_baz';
     const delimiter = `\r\n--${boundary}\r\n`;
     const close_delim = `\r\n--${boundary}--`;
     const metadata = { 'name': FILE_NAME, 'mimeType': 'application/json' };
-    const data = JSON.stringify({ expenses: [] });
+    const data = JSON.stringify({ expenses: [], categories: [...DEFAULT_CATEGORIES] });
 
     const multipartRequestBody =
         delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
@@ -396,8 +529,9 @@ async function createJsonFile() {
     });
 
     fileId = response.result.id;
-    localData = { expenses: [] };
+    localData = { expenses: [], categories: [...DEFAULT_CATEGORIES] };
     updateHouseholdIdDisplay();
+    renderCategories();
     populateMonthFiltersEngine();
     renderHistoryTableScreen();
 }
@@ -412,7 +546,12 @@ async function readJsonFile() {
         // Shape validation: ensure we always work with { expenses: [] }
         if (!localData || typeof localData !== 'object') localData = { expenses: [] };
         if (!Array.isArray(localData.expenses)) localData.expenses = [];
+        // Categories may be missing on legacy files; fall back to the defaults.
+        if (!Array.isArray(localData.categories) || localData.categories.length === 0) {
+            localData.categories = [...DEFAULT_CATEGORIES];
+        }
 
+        renderCategories();
         populateMonthFiltersEngine();
         renderHistoryTableScreen();
     } catch (err) {

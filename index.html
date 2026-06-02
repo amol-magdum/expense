@@ -51,37 +51,13 @@
                 <h1 class="text-xl font-bold tracking-tight text-gray-900">Dashboard</h1>
             </div>
 
-            <div id="menu-panel" class="hidden absolute top-full left-5 mt-2 w-80 bg-white rounded-xl shadow-lg p-4 z-30 border border-gray-100">
+            <div id="menu-panel" class="hidden absolute top-full left-5 mt-2 w-72 bg-white rounded-xl shadow-lg p-4 z-30 border border-gray-100">
                 <p id="user-email" class="text-xs text-gray-500 font-mono truncate mb-4">Loading user configuration...</p>
 
-                <div class="border-t border-gray-100 pt-4 mb-4">
-                    <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">🏠 Household Sharing</p>
-                    <p class="text-[11px] text-gray-400 mb-3 leading-snug">Share one expense file with your household so everyone records into the same place.</p>
-
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Your Household ID</label>
-                    <div class="flex items-center gap-2 mb-3">
-                        <input id="household-id" type="text" readonly class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px] font-mono text-gray-600 outline-none truncate" placeholder="Connecting...">
-                        <button id="copy-household-btn" type="button" class="shrink-0 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 text-gray-600 px-3 py-2 rounded-lg text-xs font-semibold transition border border-gray-100">
-                            Copy
-                        </button>
-                    </div>
-
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Invite member by email</label>
-                    <div class="flex items-center gap-2 mb-3">
-                        <input id="invite-email" type="email" class="flex-1 min-w-0 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="member@gmail.com">
-                        <button id="invite-btn" type="button" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
-                            Invite
-                        </button>
-                    </div>
-
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Join a household</label>
-                    <p class="text-[11px] text-gray-400 mb-2 leading-snug">After the owner invites you, pick the shared <span class="font-mono">app_expenses.json</span> file to connect.</p>
-                    <button id="join-btn" type="button" class="w-full bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
-                        Select Shared File
-                    </button>
-
-                    <p id="household-status" class="hidden text-[11px] mt-2 leading-snug"></p>
-                </div>
+                <button id="settings-btn" type="button" class="w-full flex items-center gap-2 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 text-gray-700 px-4 py-2 rounded-lg text-xs font-semibold transition border border-gray-100 mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Settings
+                </button>
 
                 <button id="logout-btn" class="w-full bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-700 px-4 py-2 rounded-lg text-xs font-semibold transition border border-gray-100 hover:border-red-100">
                     Sign Out Session
@@ -118,12 +94,6 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Expense Category</label>
                             <select id="exp-category" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-sm font-medium text-gray-700">
-                                <option>Food</option>
-                                <option>Transport</option>
-                                <option>Bills & Utilities</option>
-                                <option>Entertainment</option>
-                                <option>Shopping</option>
-                                <option>Other</option>
                             </select>
                         </div>
                         <div>
@@ -192,6 +162,59 @@
                 </table>
             </div>
         </div>
+
+        <div id="settings-view" class="hidden space-y-6 animate-fade-in">
+            <div class="flex items-center gap-3">
+                <button id="settings-back-btn" type="button" class="p-2.5 bg-white hover:bg-gray-100 rounded-xl transition text-gray-600 border border-gray-100 shadow-sm" aria-label="Back to Dashboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <h2 class="text-xl font-bold tracking-tight text-gray-900">Settings</h2>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <p class="text-base font-bold text-gray-900 mb-1">🏠 Household Sharing</p>
+                <p class="text-xs text-gray-400 mb-4 leading-snug">Share one expense file with your household so everyone records into the same place.</p>
+
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Your Household ID</label>
+                <div class="flex items-center gap-2 mb-4">
+                    <input id="household-id" type="text" readonly class="flex-1 min-w-0 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-600 outline-none truncate" placeholder="Connecting...">
+                    <button id="copy-household-btn" type="button" class="shrink-0 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 text-gray-600 px-4 py-2.5 rounded-lg text-xs font-semibold transition border border-gray-100">
+                        Copy
+                    </button>
+                </div>
+
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Invite member by email</label>
+                <div class="flex items-center gap-2 mb-4">
+                    <input id="invite-email" type="email" class="flex-1 min-w-0 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="member@gmail.com">
+                    <button id="invite-btn" type="button" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                        Invite
+                    </button>
+                </div>
+
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Join a household</label>
+                <p class="text-xs text-gray-400 mb-2 leading-snug">After the owner invites you, pick the shared <span class="font-mono">app_expenses.json</span> file to connect.</p>
+                <button id="join-btn" type="button" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                    Select Shared File
+                </button>
+
+                <p id="household-status" class="hidden text-xs mt-3 leading-snug"></p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <p class="text-base font-bold text-gray-900 mb-1">🏷️ Categories</p>
+                <p class="text-xs text-gray-400 mb-4 leading-snug">Add or remove expense categories. Shared with everyone in your household.</p>
+
+                <div class="flex items-center gap-2 mb-4">
+                    <input id="new-category" type="text" maxlength="40" class="flex-1 min-w-0 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" placeholder="New category name">
+                    <button id="add-category-btn" type="button" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                        Add
+                    </button>
+                </div>
+
+                <div id="category-list" class="flex flex-wrap gap-2"></div>
+                <p id="category-status" class="hidden text-xs mt-3 leading-snug"></p>
+            </div>
+        </div>
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -210,3 +233,4 @@
     </script>
 </body>
 </html>
+
